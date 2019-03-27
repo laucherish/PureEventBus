@@ -4,7 +4,6 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -24,6 +23,10 @@ public class EventBus {
         cacheMap = new HashMap<>();
     }
 
+    /**
+     * 单例模式
+     * @return instance
+     */
     public static EventBus getInstance() {
         if (instance == null) {
             synchronized (EventBus.class) {
@@ -46,12 +49,17 @@ public class EventBus {
             list = new ArrayList<>();
         }
         Class clazz = obj.getClass();
+        // 通过反射获取订阅类的所有方法
         Method[] methods = clazz.getDeclaredMethods();
         for (Method method : methods) {
+            // 提取出注解的方法
             Subscriber subscriber = method.getAnnotation(Subscriber.class);
             if (subscriber != null) {
+                // 获取方法的所有参数类
                 Class<?>[] types = method.getParameterTypes();
+                // 只支持一个参数，多个参数也可以封装成一个参数
                 if (types.length == 1) {
+                    // 将SubscribeMethod添加到list
                     list.add(new SubscribeMethod(method, subscriber.threadMode(), types[0]));
                 } else {
                     throw new RuntimeException("只支持一个参数！");
@@ -67,12 +75,13 @@ public class EventBus {
      */
     public void post(Object type) {
         Set<Object> set = cacheMap.keySet();
-        Iterator<Object> iterator = set.iterator();
-        while (iterator.hasNext()) {
-            Object obj = iterator.next();
+        // 通过foreach遍历cacheMap
+        for (Object obj : set) {
+            // 取出每一个订阅者的所有SubscribeMethod
             List<SubscribeMethod> list = cacheMap.get(obj);
             if (list != null) {
                 for (SubscribeMethod subscribeMethod : list) {
+                    // 判断订阅方法的参数类和事件参数类型大致相同
                     if (subscribeMethod.getType().isAssignableFrom(type.getClass())) {
                         invoke(obj, subscribeMethod, type);
                     }
